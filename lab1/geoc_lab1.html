@@ -1,0 +1,243 @@
+<html>
+<head>
+<title>GEOC - Lab 1</title>
+</head>
+<h1>GEOC - Lab 1</h1>
+<canvas id="canvas" width="1200" height="800"></canvas>
+
+<script type="text/javascript" src="TestLab1.json.js"></script>
+
+<h2>Result of (an awesome) intersection classification</h2>
+<span id="result"></span>
+
+<script type="text/javascript">
+
+//========= Auxiliary objects and data =========//
+
+// Important: this is the input
+var segments = inputJSON.segments; // Requires inputJSON variable set in file
+//var segments = inputJSON.segments.slice(0,6); // You can use slice() to select a subset of the segments. Make sure it is an even number!
+
+var points = [];
+// See names colors at https://www.w3schools.com/colors/colors_names.asp
+// Add as many colors as needed to classify all intersection types
+var colors = ['Blue', 'Red', 'Green', 'Cyan', 'DarkOrange', 'Magenta', 'RosyBrown'];
+
+// default styles
+style = {
+  curve: {
+    width: 6,
+    color: "#333"
+  },
+  line: {
+    width: 1,
+    color: "#C00"
+  },
+  point: {
+    radius: 4,
+    width: 2,
+    color: "Black",
+    fill: "Black",
+    arc1: 0,
+    arc2: 2 * Math.PI
+  }
+}
+
+context1 = canvas.getContext("2d");
+drawCanvas();
+
+//========= Auxiliary functions =========//
+function drawCanvas() {
+  // Clear everything
+  context1.clearRect(-canvas.width / 2, -canvas.height / 2, 2 * canvas.width, 2 * canvas.height);
+  // Draw whatever needs to be drawn
+  drawSegments(context1, style, segments); 
+
+}
+
+// Draws one point as circle
+function drawPoint(ctx, style, p) {
+    ctx.lineWidth = style.point.width;
+    ctx.strokeStyle = style.point.color;
+    ctx.fillStyle = style.point.fill;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
+    ctx.fill();
+    ctx.stroke();
+}
+
+// Draws one segment
+function drawSegment(ctx, style, segment, lineColor) {
+    p1 = segment.from;
+	p2 = segment.to;
+
+	// Line segment
+    ctx.lineWidth = style.line.width;
+	ctx.strokeStyle = lineColor;
+    ctx.beginPath();
+	ctx.moveTo(p1.x,p1.y);
+	ctx.lineTo(p2.x,p2.y);
+    ctx.stroke();
+			
+	// Draw vertices
+	drawPoint(ctx, style, segment.from);
+	drawPoint(ctx, style, segment.to);
+}
+
+// Draws all segments
+function drawSegments(ctx, style, segments) {
+	//For each pair draw pair after classifying intersection
+
+	for (var i = 0; i < segments.length; i=i+2) {
+		// Classify intersection and obtain color to draw pair of segments
+		var intersectionClass = classifyIntersection(segments[i], segments[i+1]);
+		reportResult(intersectionClass); // print description
+		var lineColor = colors[intersectionClass.value];
+		// Draw segment 
+		drawSegment(ctx, style, segments[i], lineColor);
+		drawSegment(ctx, style, segments[i+1], lineColor);
+	}
+}
+
+// Outputs the value of the intersection classification to the "results" HTML element
+function reportResult(intersectionClass) {
+	var text = "<font color='" + colors[intersectionClass.value] + "'>";
+	text = text + intersectionClass.value + ": " + intersectionClass.description;
+	text = text + "</font><br>";
+	document.getElementById("result").innerHTML = document.getElementById("result").innerHTML + text;
+}
+
+// Cross-Product of 2 points
+function crossProduct(p1, p2)
+{
+    return p1.x * p2.y - p1.y * p2.x;
+}
+
+function substractPoints(p1, p2)
+{
+    var point = {'x': 0, 'y': 0};
+    point.x = p2.x - p1.x;
+    point.y = p2.y - p1.y;
+    return point;
+}
+
+function equalPoints(p1, p2)
+{
+    return p1.x === p2.x && p1.y === p2.y;
+}
+
+function allSameValue()
+{
+    for (var i = 1; i < arguments.length; ++i)
+    {
+        if (arguments[i] !== arguments[0])
+            return false;
+    }
+
+    return true;
+}
+
+// http://stackoverflow.com/a/565282/786339
+/*
+    Let's express both segments' starting points as 2 variables: p and q. We can also express the endpoint as: p + r and q + s
+    Now the base case of my solution is finding 2 scalars that multiply r and s respectively, returning the same value (p + tr = q + us).
+    That would mean that there's a point where both segments intersect each other. Now let's apply some math:
+    (p + tr) x s = (q + us) x s       Where "x" means "cross product" and "s x s" = 0.
+    p x s + (tr) x s = q x s + (us) x s       =>       t(r x s) = (q - p) x s
+    Solving for t:    t = (q - p) x s / (r x s)
+    Solving for u:    u = (q - p) x r / (-s x r)
+
+    Now let's distinguish between 6 main cases:
+    >> They share a coordinate (the condition is evaluated with a helper function within the code)  | ENDPOINT
+        One of the endpoints is shared between both segments
+
+    >> r x s = 0   &&   (q - p) x r = 0                     |     OVERLAP OR NONE
+        If they are collinear, we can express the endpoints of the second segment in terms of the equation of the first one:
+        t0 = (q - p) · r / (r · r)
+        t1 = (q + s - p) · r / (r · r)
+           = t0 + s · r / (r · r)        # We express t1 using t0 so we don't have to do that many operations
+        As we have expressed one of them as terms of the other one, now we know that if t0 and t1 intersect the interval [0, 1] then they overlap each other at some point.
+        Otherwise, they are disjoint as the second segment starts in a position which is: p + x*r   where x is greater than 1.
+
+    >> r x s = 0   &&   (q - p) x r != 0                    |    NONE
+        They grow in the same direction (r x s = 0) but they do not start at the same spot (and are not collinear)
+
+    >> r x s != 0   && 0 <= t <= 1 && 0 <= u <= 1           |    CLASSIC
+        The basic intersection type explained at the beginning of this block of comment
+
+    >> r x s != 0   && (t = 0 || t = 1 || u = 0 || u = 1)   |    INTERIOR_POINT
+        If the scalar is either 0 or 1, it means that an endpoint is positioned somewhere on the other segment
+
+        ((q - p) x r) / (r x s)
+
+*/
+function classifyIntersection(s1, s2)
+{
+	var intersectionTypes =
+    {
+	    "NONE": {"value": 0, "description": "There's no intersection"},
+        "ENDPOINT": {"value": 1, "description": "Both segments share an endpoint"},
+        "INTERIOR_POINT": {"value": 2, "description": "One segment contains an endpoint of the other one"},
+        "OVERLAP": {"value": 3, "description": "Both segments overlap each other, partially or completely"},
+        "CLASSIC": {"value": 4, "description": "The segments intersect each other without sharing any endpoint at all"}
+    };
+
+    // They share an endpoint
+    if (equalPoints(s1.from, s2.from) || equalPoints(s1.from, s2.to) || equalPoints(s1.to, s2.from) || equalPoints(s1.to, s2.to))
+    {
+        return intersectionTypes.ENDPOINT;
+    }
+
+	var r = substractPoints(s1.to, s1.from);
+	var s = substractPoints(s2.to, s2.from);
+
+	var secondMultiplier = crossProduct(substractPoints(s2.from, s1.from), r);
+	var crossProd = crossProduct(r, s);
+
+	if (crossProd === 0)
+    {
+        if (secondMultiplier === 0)
+        {
+            // Collinear
+
+            // Let's check if any contains a segment of the other one
+            // Simpler way of achieving the dot product thingy explained before
+            if (!allSameValue(s2.from.x - s1.from.x < 0, s2.from.x - s1.to.x < 0, s2.to.x - s1.from.x < 0, s2.to.x - s1.to.x < 0) ||
+                !allSameValue(s2.from.y - s1.from.y < 0, s2.from.y - s1.to.y < 0, s2.to.y - s1.from.y < 0, s2.to.y - s1.to.y < 0))
+            {
+                // They are collinear and they overlap each other (partially or completely)
+                return intersectionTypes.OVERLAP;
+            }
+            else
+            {
+                return intersectionTypes.NONE;
+            }
+        }
+        else
+        {
+            // Parallel
+            return intersectionTypes.NONE;
+        }
+    }
+    else
+    {
+        var u = secondMultiplier / crossProd;
+        var t = crossProduct(substractPoints(s2.from, s1.from), s) / crossProd;
+
+        if (t >= 0 && t <= 1 && u >= 0 && u <= 1)
+        {
+            // There's an intersection, let's find out if it corresponds to an endpoint
+            if (t === 0 || t === 1 || u === 0 || u === 1)
+            {
+                return intersectionTypes.INTERIOR_POINT;
+            }
+            return intersectionTypes.CLASSIC;
+        }
+
+        return intersectionTypes.NONE;
+    }
+}
+
+
+</script>
+</html>

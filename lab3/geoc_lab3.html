@@ -1,0 +1,187 @@
+<html>
+<head>
+<title>GEOC - Lab 3</title>
+</head>
+
+<h1>GEOC - Lab 3</h1>
+<canvas id="canvas" width="800" height="700"></canvas>
+
+<!--- load all three input files -->
+<script type="text/javascript" src="TestLab3_1.json.js"></script>
+<script type="text/javascript" src="TestLab3_2.json.js"></script>
+
+<form>
+Input data set:
+<select id="dataset" onchange="changeDataSet()">
+  <option value="0">Test set 1</option>
+  <option value="1">Test set 2</option>
+</select>
+</form>
+
+
+<p>
+Note: show result by coloring each point differently depending on its situation with respect to the circle. <b>Explain in the HTML the meaning of each color</b>.
+</p>
+
+<h2>Result of (an awesome) classification</h2>
+<span id="result"></span>
+
+<script type="text/javascript">
+
+//========= Auxiliary objects and data =========//
+
+// Important: these are the input data sets
+var inputJSONs = [inputJSON1,inputJSON2] ; 
+
+var points = inputJSONs[0].points; // Default dat set
+var circle_points = inputJSONs[0].circle_points;
+var currentJSON = inputJSONs[0];
+
+// See names colors at https://www.w3schools.com/colors/colors_names.asp
+// Some colors you could use
+var colors = ['Blue', 'Red', 'Green', 'Cyan', 'DarkOrange', 'Magenta', 'RosyBrown'];
+
+// default styles
+style = {
+  curve: {
+    width: 6,
+    color: "#333"
+  },
+  line: {
+    width: 1,
+    color: "#000"
+  },
+  point: {
+    radius: 4,
+    width: 2,
+    color: "Black",
+    fill: "Black",
+    arc1: 0,
+    arc2: 2 * Math.PI
+  },
+  circle: {
+	color:"black",
+	fill: "none"
+  }
+}
+
+context1 = canvas.getContext("2d");
+context1.translate(320,320); // Translation so see full points
+drawCanvas();
+
+//========= Auxiliary functions =========//
+function drawCanvas() {
+  // Clear everything
+  context1.clearRect(-canvas.width / 2, -canvas.height / 2, 2 * canvas.width, 2 * canvas.height);
+  document.getElementById("result").innerHTML = "";
+  // Draw stuff
+  drawPoints(context1, style, points, circle_points); 
+  drawCircle(context1, style);
+
+}
+
+// Draws one point as circle
+function drawPoint(ctx, style, p, i) {
+    ctx.lineWidth = style.point.width;
+    ctx.strokeStyle = style.point.color;
+    ctx.fillStyle = style.point.fill;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, style.point.radius, style.point.arc1, style.point.arc2, true);
+    ctx.fill();
+    ctx.fillStyle = 'black';
+    ctx.fillText(i+1, p.x, p.y+15);
+    ctx.stroke();
+}
+
+// Draws the circle
+function drawCircle(ctx, style) {
+	ctx.lineWidth = style.circle.width;
+	ctx.strokeStyle = style.circle.color;
+    ctx.beginPath();
+    ctx.arc(currentJSON.c.x, currentJSON.c.y, currentJSON.r, style.point.arc1, style.point.arc2, true);
+    ctx.stroke();
+}
+
+
+// Draws all input points, with its classification color
+function drawPoints(ctx, style, points) {
+
+	for (var i = 0; i < points.length; i++) {
+	
+		var result = classifyPoint(points[i], circle_points);
+		style.point.fill = result.color;
+		style.point.color = result.color;
+		reportResult (result, i);
+		drawPoint(ctx, style, points[i], i);
+	}
+}
+
+// Outputs the value of the intersection classification to the "results" HTML element
+function reportResult(classification, index) {
+	var text = "<font color='" + classification.color + "'>" + (index+1) + ":";
+	text = text + classification.description;
+	text = text + "</font><br>";
+	document.getElementById("result").innerHTML = document.getElementById("result").innerHTML + text;
+}
+
+// Method to choose between the different data set
+function changeDataSet() {
+	var index = document.getElementById("dataset").value;
+	// Change points and triangle
+	points = inputJSONs[index].points; // Default dat set
+	circle_points = inputJSONs[index].circle_points;
+	currentJSON=inputJSONs[index];
+	drawCanvas(); // Redraw
+}
+
+function determinant4(x, a, b, c)
+{
+    var matrix =
+    [
+      [b.x - a.x, b.y - a.y, (b.x - a.x) * (b.x + a.x) + (b.y - a.y) * (b.y + a.y)],
+      [c.x - a.x, c.y - a.y, (c.x - a.x) * (c.x + a.x) + (c.y - a.y) * (c.y + a.y)],
+      [x.x - a.x, x.y - a.y, (x.x - a.x) * (x.x + a.x) + (x.y - a.y) * (x.y + a.y)]
+    ];
+    
+    /* 
+    *          a b c
+    * matrix = d e f
+    *          g h i
+    * 
+    * determinant = a*(e*i - f*h) - b*(d*i-f*g) + c*(d*h - e*g)
+    * 
+    */
+
+    return matrix[0][0] * (matrix[1][1]*matrix[2][2] - matrix[1][2]*matrix[2][1]) -
+         matrix[0][1] * (matrix[1][0]*matrix[2][2] - matrix[1][2]*matrix[2][0]) +
+         matrix[0][2] * (matrix[1][0]*matrix[2][1] - matrix[1][1]*matrix[2][0]);
+}
+
+function determinant3(circle_points)
+{
+  return (circle_points[1].x - circle_points[0].x) * (circle_points[2].y - circle_points[0].y) - (circle_points[1].y - circle_points[0].y) * (circle_points[2].x - circle_points[0].x);
+}
+
+function classifyPoint(p, circle_points) {
+  var types =
+  {
+    "INTERIOR" : { "color" : colors[0], "description" : "The point lies in the interior of the circle"},
+		"BOUNDARY" : { "color" : colors[1], "description" : "The point lies in the boundary of the circle"},
+		"OUTSIDE" : { "color" : colors[2], "description" : "The point lies outside of the circle"}
+  };
+  
+  var det = determinant4(p, circle_points[0], circle_points[1], circle_points[2]);
+
+  var clockwise = determinant3(circle_points);
+  
+  if (det === 0)
+    return types.BOUNDARY;
+
+  if (det * clockwise < 0)
+    return types.INTERIOR;
+
+  return types.OUTSIDE;
+}
+
+</script>
+</html>
