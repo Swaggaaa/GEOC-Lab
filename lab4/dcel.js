@@ -52,7 +52,6 @@ function Triangle()
 
 DCEL.prototype.findFaceOf = function(point, referencePoint)
 {
-    let rayTrace = new Vector(point, referencePoint);
     let currentVertexIndex = 3; // First position
     let currentEdgeIndex = null;
     let lastFace = null;
@@ -145,8 +144,8 @@ DCEL.prototype.findFaceOf = function(point, referencePoint)
                             this.dcelTable[currentTriangle.edges[j]].vertexEndIndex === currentVertexIndex)
                             continue;
 
-                        let s1 = {'to': new Point(), 'from': new Point()};
-                        let s2 = {'to': new Point(), 'from': new Point()};
+                        let s1 = {};
+                        let s2 = {};
                         let beginVertexIndex = this.dcelTable[currentTriangle.edges[j]].vertexBeginIndex;
                         let endVertexIndex = this.dcelTable[currentTriangle.edges[j]].vertexEndIndex;
                         s2.from = this.vertexTable[beginVertexIndex].point;
@@ -220,8 +219,8 @@ DCEL.prototype.findFaceOf = function(point, referencePoint)
                     if (currentTriangle.edges[i] === currentEdgeIndex)
                         continue;
 
-                    let s1 = {'to': new Point(), 'from': new Point()};
-                    let s2 = {'to': new Point(), 'from': new Point()};
+                    let s1 = {};
+                    let s2 = {};
                     let beginVertexIndex = this.dcelTable[currentTriangle.edges[i]].vertexBeginIndex;
                     let endVertexIndex = this.dcelTable[currentTriangle.edges[i]].vertexEndIndex;
                     s2.from = this.vertexTable[beginVertexIndex].point;
@@ -362,7 +361,7 @@ DCEL.prototype.joinTriangles = function(triangle, oppositeTriangle, edgeIndex)
 
 DCEL.prototype.findTriangle = function(faceIndex)
 {
-    var triangle = new Triangle();
+    var triangle = {};
 
     let currentEdgeIndex = this.faceTable[faceIndex].edgeIndex;
     let currentEdge = this.dcelTable[currentEdgeIndex];
@@ -371,13 +370,13 @@ DCEL.prototype.findTriangle = function(faceIndex)
     let edgeIndex = edge2.faceLeftIndex === faceIndex ? edge2.edgePrevIndex : edge2.edgeNextIndex;
     let edge = this.dcelTable[edgeIndex];
 
-    triangle.edges.push(currentEdgeIndex, edgeIndex, edge2Index);
-    triangle.vertices.push(
+    triangle.edges = [currentEdgeIndex, edgeIndex, edge2Index];
+    triangle.vertices = [
         currentEdge.faceLeftIndex === faceIndex ? currentEdge.vertexBeginIndex : currentEdge.vertexEndIndex,
         edge.faceLeftIndex === faceIndex ? edge.vertexBeginIndex : edge.vertexEndIndex,
         edge2.faceLeftIndex === faceIndex ? edge2.vertexBeginIndex : edge2.vertexEndIndex,
-    );
-    triangle.faces.push(faceIndex, this.faceTable.length, this.faceTable.length + 1);
+    ];
+    triangle.faces = [faceIndex, this.faceTable.length, this.faceTable.length + 1];
 
     return triangle;
 }
