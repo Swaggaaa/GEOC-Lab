@@ -9,7 +9,7 @@
 <canvas id="canvas" width="1024" height="768"></canvas>
 
 <!------ TO DO: Modify this line to switch between input files ------>
-<script type="text/javascript" src="lanzarote.json.js"></script>
+<script type="text/javascript" src="lanzarote-small.json.js"></script>
 <!---<script type="text/javascript" src="Lanzarote.json.js"></script>--->
 
 <!---- External library to handle zoom and pan ---->
@@ -127,14 +127,15 @@ function drawTriangles(ctx) {
 function drawBoundaries(ctx) {
 	var prevColor = ctx.strokeStyle;
 	ctx.strokeStyle = "blue"; // Draw them in blue
+	ctx.lineWidth = 0.5;
 	for (var i=0; i<boundaries.length; i++) {
 		var b = boundaries[i];
 		//Draw one boundary only if it has more than one point
 		if (b.length>1) {
 			ctx.beginPath();
-			ctx.moveTo(transformPointToCanvas(points[b[0]]).x, transformPointToCanvas(points[b[0]]).y);
+			ctx.moveTo(transformPointToCanvas(triangles ? points[b[0]+3] : points[b[0]]).x, transformPointToCanvas(triangles ? points[b[0]+3] : points[b[0]]).y);
 			for (var j=1; j<b.length;++j) {
-				ctx.lineTo(transformPointToCanvas(points[b[j]]).x, transformPointToCanvas(points[b[j]]).y);
+				ctx.lineTo(transformPointToCanvas(triangles ? points[b[j]+3] : points[b[j]]).x, transformPointToCanvas(triangles ? points[b[j]+3] : points[b[j]]).y);
 			}
 			ctx.closePath();
 			ctx.stroke();
@@ -192,13 +193,20 @@ function doTriangulate() {
 	redraw();
 }
 
+function doPruneBoundaries()
+{
+	triangles = pruneBoundaries(boundaries);
+	let string = "Boundaries prunned!";
+	document.getElementById("time_label").innerHTML += " | " + string;
+	console.log(string);
+	redraw();
+}
+
 
 </script>
 
 <br><br>
 <button onclick="doTriangulate()">Triangulate</button>
-
-<!---- This button will be used in lab 5 ----->
 <button onclick="doPruneBoundaries()">Prune boundaries</button>
 
 <br><br>
